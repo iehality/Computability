@@ -700,7 +700,6 @@ Proof.
   auto.
 Qed.
 
-
 Ltac lclean :=
   repeat(
       rewrite sfn0

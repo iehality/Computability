@@ -1,4 +1,4 @@
-Require Import Lambda.
+Require Import Recursion.Lambda.
 Require Import Reduction.
 Require Import SetoidL.
 
@@ -19,7 +19,7 @@ Fixpoint NAT0 (n0 : nat) :=
 Definition NAT n := \ \ (NAT0 n).
 Notation "[ n ]" := (NAT n) (at level 0).
 
-Lemma NAT0Normal: forall n, isNormal (NAT0 n).
+Lemma isNormal_nat0: forall n, isNormal (NAT0 n).
 Proof.
   unfold isNormal.
   intros.
@@ -30,14 +30,14 @@ Proof.
   auto.
 Qed.
 
-Lemma NATNormal: forall n, isNormal [n].
+Lemma isNormal_NAT : forall n, isNormal [n].
 Proof.
   intros.
   unfold isNormal, NAT.
   simpl.
-  apply NAT0Normal.
+  apply isNormal_nat0.
 Qed.
-Hint Resolve NATNormal : core.
+Hint Resolve isNormal_NAT : core.
 
 Lemma nat_uniqueness : forall l k n,
   (l -->> k) ->
@@ -45,12 +45,12 @@ Lemma nat_uniqueness : forall l k n,
   (k -->> [n]).
 Proof.
   intros.
-  apply (uniqueness l _ _ (NATNormal _)).
+  apply (uniqueness l _ _ (isNormal_NAT _)).
   auto.
   auto.
 Qed.
 
-Lemma NAT0_fv : forall n, fv (NAT0 (S n)) = 2.
+Lemma fv_NAT0_Sn_E_2 : forall n, fv (NAT0 (S n)) = 2.
 Proof.
   induction n.
   simpl. lia.
@@ -60,19 +60,19 @@ Proof.
   simpl. auto.
 Qed.
 
-Lemma NAT_fv : forall n, fv [n] = 0.
+Lemma fv_NAT_E_0 : forall n, fv [n] = 0.
 Proof.
   unfold NAT.
   destruct n.
   simpl. auto.
   change (fv (\ \ NAT0 (S n))) with (pred (pred (fv (NAT0 (S n))))).
-  rewrite NAT0_fv.
+  rewrite fv_NAT0_Sn_E_2.
   simpl. auto.
 Qed.
 
 Definition SUCC := \ \ \ '1 @ ('2 @ '1 @ '0).
 
-Lemma NAT_SUCC : forall n, SUCC @ [n] -->> [S n].
+Lemma SUCC_R_S : forall n, SUCC @ [n] -->> [S n].
 Proof.
   unfold SUCC, NAT.
   intros.
@@ -86,17 +86,17 @@ Proof.
   auto.
 Qed.
 
-Lemma NAT_SUCC_eq : forall n, SUCC @ [n] == [S n].
+Lemma SUCC_E_S : forall n, SUCC @ [n] == [S n].
 Proof.
   intros.
   apply reduct_equiv.
-  apply NAT_SUCC.
+  apply SUCC_R_S.
 Qed.
 
 Lemma succ_iterate : forall n l k, [S n] @ l @ k == l @ ([n] @ l @ k).
 Proof.
   intros.
-  rewrite <- NAT_SUCC_eq.
+  rewrite <- SUCC_E_S.
   unfold SUCC.
   Opaque NAT.
   betaes.
@@ -105,47 +105,47 @@ Qed.
 
 Definition PAIR := \ \ \ '0 @ '2 @ '1.
 
-Lemma PAIR_TRUE : forall l k, PAIR @ l @ k @ TRUE -->> l.
+Lemma PAIR_TRUE_R : forall l k, PAIR @ l @ k @ TRUE -->> l.
 Proof.
   unfold TRUE, PAIR.
   intros.
   betas.
 Qed.
 
-Lemma PAIR_TRUE_eq : forall l k, PAIR @ l @ k @ TRUE == l.
+Lemma PAIR_TRUE_E : forall l k, PAIR @ l @ k @ TRUE == l.
 Proof.
   intros.
   apply reduct_equiv.
-  apply PAIR_TRUE.
+  apply PAIR_TRUE_R.
 Qed.
 
-Lemma PAIR_FALSE : forall l k, PAIR @ l @ k @ FALSE -->> k.
+Lemma PAIR_FALSE_R : forall l k, PAIR @ l @ k @ FALSE -->> k.
 Proof.
   unfold FALSE, PAIR.
   intros.
   betas.
 Qed.
 
-Lemma PAIR_FALSE_eq : forall l k, PAIR @ l @ k @ FALSE == k.
+Lemma PAIR_FALSE_E : forall l k, PAIR @ l @ k @ FALSE == k.
 Proof.
   intros.
   apply reduct_equiv.
-  apply PAIR_FALSE.
+  apply PAIR_FALSE_R.
 Qed.
 
-Lemma PAIR_equiv : forall x y v w,
+Lemma PAIR_injection : forall x y v w,
   (PAIR @ x @ y == PAIR @ v @ w) -> (x == v /\ y == w).
 Proof.
   intros.
   split.
-  rewrite <- (PAIR_TRUE_eq _ y).
+  rewrite <- (PAIR_TRUE_E _ y).
   symmetry.
-  rewrite <- (PAIR_TRUE_eq _ w).
+  rewrite <- (PAIR_TRUE_E _ w).
   rewrite H.
   reflexivity.
-  rewrite <- (PAIR_FALSE_eq x).
+  rewrite <- (PAIR_FALSE_E x).
   symmetry.
-  rewrite <- (PAIR_FALSE_eq v).
+  rewrite <- (PAIR_FALSE_E v).
   rewrite H.
   reflexivity.
 Qed.
@@ -153,24 +153,24 @@ Qed.
 
 Definition ISZERO := \ '0 @ (\ FALSE) @ TRUE.
 
-Lemma ISZERO_0_eq: ISZERO @ [0] == TRUE.
+Lemma ISZERO_0_E_TRUE : ISZERO @ [0] == TRUE.
 Proof.
   unfold ISZERO, TRUE, FALSE.
   betaes.
 Qed.
 
-Lemma ISZERO_Sn_eq : forall n, ISZERO @ [S n] == FALSE.
+Lemma ISZERO_Sn_E_FALSE : forall n, ISZERO @ [S n] == FALSE.
 Proof.
   unfold ISZERO, FALSE.
   intros.
-  rewrite <- NAT_SUCC_eq.
+  rewrite <- SUCC_E_S.
   unfold SUCC, TRUE.
   betaes.
 Qed.
 
 Definition PRED := \\\ '2 @ (\\ '0 @ ('1 @ '3)) @ (\ '1) @ (\ '0).
 
-Lemma PRED_0_eq : PRED @ [0] == [0].
+Lemma PRED_0_E_0 : PRED @ [0] == [0].
 Proof.
   unfold PRED.
   simpl.
@@ -178,18 +178,18 @@ Proof.
   betaes.
 Qed.
 
-Lemma PRED_Sn_eq : forall n, PRED @ [S n] == [n].
+Lemma PRED_Sn_E_n : forall n, PRED @ [S n] == [n].
 Proof.
   induction n.
   unfold PRED.
   change [0] with (\ \ '0).
   change [1] with (\ \ '1 @ '0).
   betaes.
-  rewrite <- NAT_SUCC_eq.
-  rewrite <- NAT_SUCC_eq at 2.
-  rewrite <- NAT_SUCC_eq.
+  rewrite <- SUCC_E_S.
+  rewrite <- SUCC_E_S at 2.
+  rewrite <- SUCC_E_S.
   rewrite <- IHn at 2.
-  rewrite <- NAT_SUCC_eq.
+  rewrite <- SUCC_E_S.
   unfold PRED, SUCC.
   Opaque NAT.
   betaes.
@@ -200,7 +200,7 @@ Qed.
 Definition LE : Lambda := \\ ^^ISZERO @ ('0 @ ^^PRED @ '1).
 Definition EQ : Lambda := \\ ^^AND @ (^^LE @ '0 @ '1) @ (^^LE @ '1 @ '0).
 
-Lemma pred_plus_E : forall n m, [n] @ PRED @ [n + m] == [m].
+Lemma n_PRED_plus_n_m_E_m : forall n m, [n] @ PRED @ [n + m] == [m].
 Proof.
     induction n.
     intros.
@@ -211,10 +211,10 @@ Proof.
     assert (S n + m = n + S m). lia.
     rewrite H.
     rewrite IHn.
-    apply PRED_Sn_eq.
+    apply PRED_Sn_E_n.
 Qed.
 
-Lemma nle_I_le_E_false : forall n m,
+Lemma Nle_I_LE_E_FALSE : forall n m,
   m < n -> LE @ [n] @ [m] == FALSE.
 Proof.
   assert (forall m n, LE @ [n + S m] @ [n] == FALSE).
@@ -225,8 +225,8 @@ Proof.
     intros.
     betae.
     betae.
-    rewrite pred_plus_E.
-    apply ISZERO_Sn_eq.
+    rewrite n_PRED_plus_n_m_E_m.
+    apply ISZERO_Sn_E_FALSE.
   }
   intros.
   assert (n = m + S (n - m - 1)). lia.
@@ -234,21 +234,21 @@ Proof.
   auto.
 Qed.
 
-Lemma le_I_le_E_true : forall n m,
+Lemma le_I_LE_E_TRUE : forall n m,
   n <= m -> LE @ [n] @ [m] == TRUE.
 Proof.
   assert (forall n m, [n + m] @ PRED @ [m] == [0]).
   {
     induction n.
     intros. simpl.
-    assert (H := pred_plus_E m 0).
+    assert (H := n_PRED_plus_n_m_E_m m 0).
     rewrite Nat.add_0_r in H. auto.
     intros.
     assert (S n + m = S (n + m)). lia.
     rewrite H.
     rewrite succ_iterate.
     rewrite IHn.
-    apply PRED_0_eq.
+    apply PRED_0_E_0.
   }
   assert (forall m n, LE @ [n] @ [m + n] == TRUE).
   {
@@ -259,7 +259,7 @@ Proof.
     betae.
     betae.
     rewrite H.
-    apply ISZERO_0_eq.
+    apply ISZERO_0_E_TRUE.
     Transparent PRED.
     Transparent ISZERO.
   }
@@ -269,7 +269,7 @@ Proof.
   auto.
 Qed.
 
-Lemma eq_I_eq_E_true : forall n,
+Lemma EQ_n_n_E_TRUE : forall n,
   EQ @ [n] @ [n] == TRUE.
 Proof.
   unfold EQ, AND.
@@ -277,13 +277,13 @@ Proof.
   Opaque LE.
   betae. betae. betae. betae.
   assert (LE @ [n] @ [n] == TRUE).
-  apply le_I_le_E_true. lia.
+  apply le_I_LE_E_TRUE. lia.
   rewrite H.
   unfold TRUE.
   betaes.
 Qed.
 
-Lemma neq_I_eq_E_true : forall n m,
+Lemma lt_I_EQ_E_FALSE : forall n m,
   n < m -> EQ @ [n] @ [m] == FALSE.
 Proof.
   unfold EQ, AND.
@@ -291,9 +291,9 @@ Proof.
   Opaque LE.
   betae. betae. betae. betae.
   assert (LE @ [m] @ [n] == FALSE).
-  apply nle_I_le_E_false. lia.
+  apply Nle_I_LE_E_FALSE. lia.
   assert (LE @ [n] @ [m] == TRUE).
-  apply le_I_le_E_true. lia.
+  apply le_I_LE_E_TRUE. lia.
   rewrite H0.
   rewrite H1.
   unfold TRUE, FALSE.
@@ -302,7 +302,7 @@ Qed.
 
 Definition CASE := \ \ \ ^^^ISZERO @ '0 @ '2 @ ('1 @ (^^^PRED @ '0)).
 
-Lemma CASE_0_eq : forall x y,
+Lemma CASE_x_y_0_E_x : forall x y,
   CASE @ x @ y @ [0] == x.
 Proof.
   unfold CASE.
@@ -311,14 +311,14 @@ Proof.
   Opaque PRED.
   Opaque NAT.
   betae. betae. betae.
-  rewrite ISZERO_0_eq.
+  rewrite ISZERO_0_E_TRUE.
   betaes.
   Transparent ISZERO.
   Transparent PRED.
   Transparent NAT.
 Qed.
 
-Lemma CASE_Sn_eq : forall x y n,
+Lemma CASE_x_y_Sn_E_y_n : forall x y n,
   CASE @ x @ y @ [S n] == y @ [n].
 Proof.
   unfold CASE.
@@ -327,8 +327,8 @@ Proof.
   Opaque PRED.
   Opaque NAT.
   betae. betae. betae.
-  rewrite ISZERO_Sn_eq.
-  rewrite PRED_Sn_eq.
+  rewrite ISZERO_Sn_E_FALSE.
+  rewrite PRED_Sn_E_n.
   betaes.
   Transparent ISZERO.
   Transparent PRED.
@@ -337,7 +337,7 @@ Qed.
 
 Definition YC := \ (\ '1 @ ('0 @ '0)) @ (\ '1 @ ('0 @ '0)).
 
-Lemma Yfixpoint : forall x, YC @ x -->> x @ (reduct_l (YC @ x)).
+Lemma YC_x_R_x_YC_x : forall x, YC @ x -->> x @ (reduct_l (YC @ x)).
 Proof.
   unfold YC.
   simpl.
@@ -347,7 +347,7 @@ Proof.
   auto.
 Qed.
 
-Lemma Yfixpoint_eq : forall x, YC @ x == x @ (YC @ x).
+Lemma YC_x_E_x_YC_x : forall x, YC @ x == x @ (YC @ x).
 Proof.
   intros.
   unfold YC.
@@ -360,7 +360,7 @@ Proof.
   reflexivity.
 Qed.
 
-Definition mu := \ (YC @ (\ \ ('2 @ '0) @ '0 @ ('1 @ (SUCC @ '0)))) @ [0].
+Definition MU := \ (YC @ (\ \ ('2 @ '0) @ '0 @ ('1 @ (SUCC @ '0)))) @ [0].
 
 Lemma inductioninv : forall x p, 
   p x -> 
@@ -378,10 +378,10 @@ Proof.
   lia. auto.
 Qed.
 
-Lemma mu_p : forall n A, 
+Lemma MU_R_minimum : forall n A, 
   (A @ [n] -->> TRUE) -> 
   (forall m, m < n -> (A @ [m] -->> FALSE)) ->
-  (mu @ A -->> [n]).
+  (MU @ A -->> [n]).
 Proof.
   assert(fv YC = 0). simpl. auto.
   assert(fv SUCC = 0). simpl. auto.
@@ -397,7 +397,7 @@ Proof.
   - intros.
     apply inductioninv with (x:=n).
     + unfold P, Y.
-      apply (reductions_trans _ _ _ (reductions_app0 _ _ _ (Yfixpoint _))).
+      apply (reductions_trans _ _ _ (reductions_app0 _ _ _ (YC_x_R_x_YC_x _))).
       fold (Y A).
       beta.
       beta.
@@ -408,7 +408,7 @@ Proof.
     + unfold P.
       intros.
       unfold Y.
-      apply (reductions_trans _ _ _ (reductions_app0 _ _ _ (Yfixpoint _))).
+      apply (reductions_trans _ _ _ (reductions_app0 _ _ _ (YC_x_R_x_YC_x _))).
       fold (Y A).
       beta.
       beta.
@@ -418,13 +418,13 @@ Proof.
       beta.
       beta.
       apply (reductions_trans _ _ (reduct_l (Y A) @ [S y])).
-      reducts. apply NAT_SUCC.
+      reducts. apply SUCC_R_S.
       apply (nat_uniqueness (Y A @ [S y])).
       reducts.
       apply l_reductl.
       auto.
   - intros.
-    unfold mu.
+    unfold MU.
     beta.
     fold (Y A).
     apply H1.
@@ -432,14 +432,14 @@ Proof.
     auto.
 Qed.
 
-Lemma mu_eq : forall n A, 
+Lemma MU_E_minimum : forall n A, 
   (A @ [n] == TRUE) -> 
   (forall m, m < n -> (A @ [m] == FALSE)) ->
-  (mu @ A == [n]).
+  (MU @ A == [n]).
 Proof.
   intros.
   apply reduct_equiv.
-  apply mu_p.
+  apply MU_R_minimum.
   apply normal_equiv_reduct.
   unfold TRUE, isNormal. simpl. auto.
   auto.
@@ -451,7 +451,7 @@ Qed.
 
 Definition DIVERGENT := (\ '0 @ '0) @ (\ '0 @ '0).
 
-Lemma DIVERGENT_reduct : forall l, (DIVERGENT -->> l) -> l = DIVERGENT.
+Lemma DIVERGENT_R_DIVERGENT : forall l, (DIVERGENT -->> l) -> l = DIVERGENT.
 Proof.
   assert (forall l k, (l -->> k) -> l = DIVERGENT -> k = DIVERGENT).
   unfold DIVERGENT.
@@ -500,9 +500,20 @@ Proof.
   intro.
   inversion H.
   assert (k = DIVERGENT).
-  apply DIVERGENT_reduct. auto.
+  apply DIVERGENT_R_DIVERGENT. auto.
   rewrite H2 in H0.
   unfold isNormal, DIVERGENT in H0.
   simpl in H0.
   discriminate H0.
+Qed.
+
+Lemma N_DIVERGENT_E_nat : forall n, [n] == DIVERGENT -> False.
+Proof.
+  intros.
+  assert (D := DIVERGENT_divergent).
+  rewrite <- H in D.
+  contradict D.
+  apply (Convergent_intro _ [n]).
+  apply isNormal_NAT.
+  auto.
 Qed.
