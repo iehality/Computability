@@ -2,6 +2,8 @@ Require Import Lambda.
 Require Import Reduction.
 Require Import SetoidL.
 
+Opaque equiv.
+
 Definition FALSE := \ \ '0. (* λx. λy. y *)
 Definition TRUE  := \ \ '1. (* λx. λy. x *)
 Definition AND := \ \ '0 @ '1 @ FALSE.
@@ -91,61 +93,72 @@ Proof.
   apply NAT_SUCC.
 Qed.
 
-Definition pair := \ \ \ '0 @ '2 @ '1.
-
-Lemma pair_TRUE : forall l k, pair @ l @ k @ TRUE -->> l.
+Lemma succ_iterate : forall n l k, [S n] @ l @ k == l @ ([n] @ l @ k).
 Proof.
-  unfold TRUE, pair.
+  intros.
+  rewrite <- NAT_SUCC_eq.
+  unfold SUCC.
+  Opaque NAT.
+  betaes.
+  Transparent NAT.
+Qed.
+
+Definition PAIR := \ \ \ '0 @ '2 @ '1.
+
+Lemma PAIR_TRUE : forall l k, PAIR @ l @ k @ TRUE -->> l.
+Proof.
+  unfold TRUE, PAIR.
   intros.
   betas.
 Qed.
 
-Lemma pair_TRUE_eq : forall l k, pair @ l @ k @ TRUE == l.
+Lemma PAIR_TRUE_eq : forall l k, PAIR @ l @ k @ TRUE == l.
 Proof.
   intros.
   apply reduct_equiv.
-  apply pair_TRUE.
+  apply PAIR_TRUE.
 Qed.
 
-Lemma pair_FALSE : forall l k, pair @ l @ k @ FALSE -->> k.
+Lemma PAIR_FALSE : forall l k, PAIR @ l @ k @ FALSE -->> k.
 Proof.
-  unfold FALSE, pair.
+  unfold FALSE, PAIR.
   intros.
   betas.
 Qed.
 
-Lemma pair_FALSE_eq : forall l k, pair @ l @ k @ FALSE == k.
+Lemma PAIR_FALSE_eq : forall l k, PAIR @ l @ k @ FALSE == k.
 Proof.
   intros.
   apply reduct_equiv.
-  apply pair_FALSE.
+  apply PAIR_FALSE.
 Qed.
 
-Lemma pair_equiv : forall x y v w,
-  (pair @ x @ y == pair @ v @ w) -> (x == v /\ y == w).
+Lemma PAIR_equiv : forall x y v w,
+  (PAIR @ x @ y == PAIR @ v @ w) -> (x == v /\ y == w).
 Proof.
   intros.
   split.
-  rewrite <- (pair_TRUE_eq _ y).
+  rewrite <- (PAIR_TRUE_eq _ y).
   symmetry.
-  rewrite <- (pair_TRUE_eq _ w).
+  rewrite <- (PAIR_TRUE_eq _ w).
   rewrite H.
   reflexivity.
-  rewrite <- (pair_FALSE_eq x).
+  rewrite <- (PAIR_FALSE_eq x).
   symmetry.
-  rewrite <- (pair_FALSE_eq v).
+  rewrite <- (PAIR_FALSE_eq v).
   rewrite H.
   reflexivity.
 Qed.
 
 
 Definition ISZERO := \ '0 @ (\ FALSE) @ TRUE.
+
 Lemma ISZERO_0_eq: ISZERO @ [0] == TRUE.
 Proof.
   unfold ISZERO, TRUE, FALSE.
-  Opaque equiv.
   betaes.
 Qed.
+
 Lemma ISZERO_Sn_eq : forall n, ISZERO @ [S n] == FALSE.
 Proof.
   unfold ISZERO, FALSE.
@@ -155,7 +168,8 @@ Proof.
   betaes.
 Qed.
 
-Definition PRED := \ \ \ '2 @ (\ \ '0 @ ('1 @ '3)) @ (\ '1) @ (\ '0).
+Definition PRED := \\\ '2 @ (\\ '0 @ ('1 @ '3)) @ (\ '1) @ (\ '0).
+
 Lemma PRED_0_eq : PRED @ [0] == [0].
 Proof.
   unfold PRED.
@@ -183,15 +197,116 @@ Proof.
   betaes_all.
 Qed.
 
-Definition CASE := \ \ \ ISZERO @ '0 @ '2 @ ('1 @ (PRED @ '0)).
+Definition LE : Lambda := \\ ^^ISZERO @ ('0 @ ^^PRED @ '1).
+Definition EQ : Lambda := \\ ^^AND @ (^^LE @ '0 @ '1) @ (^^LE @ '1 @ '0).
+
+Lemma pred_plus_E : forall n m, [n] @ PRED @ [n + m] == [m].
+Proof.
+    induction n.
+    intros.
+    change [0] with (\ \ '0).
+    betaes.
+    intros.
+    rewrite succ_iterate.
+    assert (S n + m = n + S m). lia.
+    rewrite H.
+    rewrite IHn.
+    apply PRED_Sn_eq.
+Qed.
+
+Lemma nle_I_le_E_false : forall n m,
+  m < n -> LE @ [n] @ [m] == FALSE.
+Proof.
+  assert (forall m n, LE @ [n + S m] @ [n] == FALSE).
+  {
+    unfold LE.
+    Opaque PRED.
+    Opaque ISZERO.
+    intros.
+    betae.
+    betae.
+    rewrite pred_plus_E.
+    apply ISZERO_Sn_eq.
+  }
+  intros.
+  assert (n = m + S (n - m - 1)). lia.
+  rewrite H1.
+  auto.
+Qed.
+
+Lemma le_I_le_E_true : forall n m,
+  n <= m -> LE @ [n] @ [m] == TRUE.
+Proof.
+  assert (forall n m, [n + m] @ PRED @ [m] == [0]).
+  {
+    induction n.
+    intros. simpl.
+    assert (H := pred_plus_E m 0).
+    rewrite Nat.add_0_r in H. auto.
+    intros.
+    assert (S n + m = S (n + m)). lia.
+    rewrite H.
+    rewrite succ_iterate.
+    rewrite IHn.
+    apply PRED_0_eq.
+  }
+  assert (forall m n, LE @ [n] @ [m + n] == TRUE).
+  {
+    unfold LE.
+    Opaque PRED.
+    Opaque ISZERO.
+    intros.
+    betae.
+    betae.
+    rewrite H.
+    apply ISZERO_0_eq.
+    Transparent PRED.
+    Transparent ISZERO.
+  }
+  intros.
+  assert (m = (m - n) + n). lia.
+  rewrite H2.
+  auto.
+Qed.
+
+Lemma eq_I_eq_E_true : forall n,
+  EQ @ [n] @ [n] == TRUE.
+Proof.
+  unfold EQ, AND.
+  intros.
+  Opaque LE.
+  betae. betae. betae. betae.
+  assert (LE @ [n] @ [n] == TRUE).
+  apply le_I_le_E_true. lia.
+  rewrite H.
+  unfold TRUE.
+  betaes.
+Qed.
+
+Lemma neq_I_eq_E_true : forall n m,
+  n < m -> EQ @ [n] @ [m] == FALSE.
+Proof.
+  unfold EQ, AND.
+  intros.
+  Opaque LE.
+  betae. betae. betae. betae.
+  assert (LE @ [m] @ [n] == FALSE).
+  apply nle_I_le_E_false. lia.
+  assert (LE @ [n] @ [m] == TRUE).
+  apply le_I_le_E_true. lia.
+  rewrite H0.
+  rewrite H1.
+  unfold TRUE, FALSE.
+  betaes.
+Qed.
+
+Definition CASE := \ \ \ ^^^ISZERO @ '0 @ '2 @ ('1 @ (^^^PRED @ '0)).
 
 Lemma CASE_0_eq : forall x y,
   CASE @ x @ y @ [0] == x.
 Proof.
   unfold CASE.
   intros.
-  assert (fv ISZERO = 0). simpl. auto.
-  assert (fv PRED = 0). simpl. auto.
   Opaque ISZERO.
   Opaque PRED.
   Opaque NAT.
@@ -206,8 +321,6 @@ Qed.
 Lemma CASE_Sn_eq : forall x y n,
   CASE @ x @ y @ [S n] == y @ [n].
 Proof.
-  assert(fv ISZERO = 0). simpl. auto.
-  assert(fv PRED = 0). simpl. auto.
   unfold CASE.
   intros.
   Opaque ISZERO.
@@ -336,12 +449,12 @@ Proof.
   auto.
 Qed.
 
-Definition Omega := (\ '0 @ '0) @ (\ '0 @ '0).
+Definition DIVERGENT := (\ '0 @ '0) @ (\ '0 @ '0).
 
-Lemma Omega_reduct : forall l, (Omega -->> l) -> l = Omega.
+Lemma DIVERGENT_reduct : forall l, (DIVERGENT -->> l) -> l = DIVERGENT.
 Proof.
-  assert (forall l k, (l -->> k) -> l = Omega -> k = Omega).
-  unfold Omega.
+  assert (forall l k, (l -->> k) -> l = DIVERGENT -> k = DIVERGENT).
+  unfold DIVERGENT.
   intros l k H.
   induction H.
   - inversion H.
@@ -377,19 +490,19 @@ Proof.
     + auto.
   - auto.
   - intros.
-    apply (H Omega).
+    apply (H DIVERGENT).
     auto.
     auto.
 Qed.
 
-Lemma Divergent_Omega : ~ Convergent Omega.
+Lemma DIVERGENT_divergent : ~ Convergent DIVERGENT.
 Proof.
   intro.
   inversion H.
-  assert (k = Omega).
-  apply Omega_reduct. auto.
+  assert (k = DIVERGENT).
+  apply DIVERGENT_reduct. auto.
   rewrite H2 in H0.
-  unfold isNormal, Omega in H0.
+  unfold isNormal, DIVERGENT in H0.
   simpl in H0.
   discriminate H0.
 Qed.

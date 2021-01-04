@@ -108,6 +108,11 @@ Fixpoint sf (n k : nat) l0 :=
   | l1 @ l2 => (sf n k l1) @ (sf n k l2)
   end.
 
+Notation "^" := (sf 0 1).
+Notation "^^" := (sf 0 2).
+Notation "^^^" := (sf 0 3).
+Notation "^^^^" := (sf 0 4).
+
 Lemma sfn0 : forall l n, sf n 0 l = l.
 Proof.
   induction l.
