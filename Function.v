@@ -22,7 +22,7 @@ Inductive PR (f : nat -> numeral) (l : Lambda) : Prop :=
 | PR_intro : (forall x y, f x = num y <-> (l @ [x] == [y])) -> PR f l.
 
 Inductive PartialRecursive (f : nat -> numeral) :=
-| PartialRec_intro : forall l, PR f l -> PartialRecursive f.
+| PartialRecursive_intro : forall l, PR f l -> PartialRecursive f.
 
 Parameter code : Lambda -> nat.
 Parameter decode : nat -> Lambda.
@@ -128,7 +128,7 @@ Section RecursionTheorem.
     s_1_1 (code (\ ^UNIV @ (^CPAIR @ (^UNIV @ (^CPAIR @ (^FST @ '0) @ (^FST @ '0))) @ (^SND @ '0)));
     code (\ ^I @ (^S_1_1 @ ^[code (\ ^UNIV @ (^CPAIR @ (^UNIV @ (^CPAIR @ (^FST @ '0) @ (^FST @ '0))) @ (^SND @ '0)))] @ '0))).
     
-  Theorem RecursionTheorem i : forall I, Rec i I ->
+  Theorem Kleene_Recursion i : forall I, Rec i I ->
     {*fixedpoint I} = {*i (fixedpoint I)}.
   Proof.
     intros.
@@ -189,6 +189,25 @@ Inductive recursiveSet (A : nat -> Prop) : Prop :=
 
 Definition K := fun x => defined ({*x}(x)).
 
+Theorem K_re : reSet K.
+Proof.
+  apply (reSet_intro _ (fun x => {*x}(x))).
+  - pose (l := \ ^UNIV @ (^CPAIR @ '0 @ '0)).
+    apply (PartialRecursive_intro _ l).
+    apply PR_intro.
+    intros.
+    assert (l @ [x] == UNIV @ (CPAIR @ [x] @ [x])).
+    unfold l.
+    betae.
+    reflexivity.
+    rewrite H.
+    apply UNIV_univ.
+  - intros.
+    unfold K.
+    reflexivity.
+Qed.
+      
+
 Theorem K_nonrecursive : ~ recursiveSet K.
 Proof.
   intro.
@@ -237,7 +256,7 @@ Qed.
 
 Fixpoint initial (n0 : nat) (f : nat -> nat) : Lambda :=
   match n0 with
-  | 0   => \ DIVERGENT
+  | 0   => \ ^DIVERGENT
   | S n => \ (^LE @ '0 @ ^[n]) @ ((^LE @ ^[n] @ '0) @ ^[f n] @ (^(initial n f) @ '0)) @ ^DIVERGENT
   end.
 
