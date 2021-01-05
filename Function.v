@@ -1,8 +1,8 @@
-Require Import Lambda.
-Require Import Reduction.
-Require Import SetoidL.
-Require Import Calc.
-Require Import Pairing.
+Require Export Lambda.
+Require Export Reduction.
+Require Export SetoidL.
+Require Export Calc.
+Require Export Pairing.
 Require Export Classical.
 
 Opaque equiv.
@@ -11,6 +11,9 @@ Opaque NAT.
 Inductive numeral :=
 | num : nat -> numeral
 | undefined.
+
+Inductive defined (n : numeral) : Prop :=
+| defined_intro : forall x, n = num x -> defined n.
 
 Inductive Rec (f : nat -> nat) (l : Lambda) : Prop :=
 | Rec_intro : (forall x, (l @ [x] == [f x])) -> Rec f l.
@@ -128,7 +131,7 @@ Section RecursionTheorem.
     s_1_1 (code (\ ^UNIV @ (^CPAIR @ (^UNIV @ (^CPAIR @ (^FST @ '0) @ (^FST @ '0))) @ (^SND @ '0)));
     code (\ ^I @ (^S_1_1 @ ^[code (\ ^UNIV @ (^CPAIR @ (^UNIV @ (^CPAIR @ (^FST @ '0) @ (^FST @ '0))) @ (^SND @ '0)))] @ '0))).
     
-  Theorem Kleene_Recursion i : forall I, Rec i I ->
+  Theorem Kleene_Recursion : forall i I, Rec i I ->
     {*fixedpoint I} = {*i (fixedpoint I)}.
   Proof.
     intros.
@@ -175,11 +178,19 @@ Section RecursionTheorem.
     rewrite S11_s11.
     auto.
   Qed.
-  
+
+  Theorem Kleene_Recursion_ext : forall i, Recursive i ->
+    exists n : nat, {*n} = {*i n}.
+  Proof.
+    intros.
+    inversion H.
+    apply Kleene_Recursion in H0.
+    eauto.
+  Qed.
+    
 End RecursionTheorem.
 
-Inductive defined (n : numeral) : Prop :=
-| defined_intro : forall x, n = num x -> defined n.
+Definition Domain (e x : nat) : Prop := defined ({*e}(x)).
 
 Inductive reSet (A : nat -> Prop) : Prop :=
 | reSet_intro : forall f, PartialRecursive f -> (forall x, defined (f x) <-> A x) -> reSet A.
@@ -206,7 +217,6 @@ Proof.
     unfold K.
     reflexivity.
 Qed.
-      
 
 Theorem K_nonrecursive : ~ recursiveSet K.
 Proof.
@@ -253,6 +263,93 @@ Proof.
     Transparent ISZERO.
     Transparent DIVERGENT.
 Qed.
+
+Definition indexSet (A : nat -> Prop) := forall x y, {*x} = {*y} -> A x -> A y.
+
+Lemma N_FA_NP_I_EX_P {A : Type} (P : A -> Prop) :
+  (~ forall x, ~ P x) -> (exists x, P x).
+Proof.
+  intros.
+  apply NNPP.
+  contradict H.
+  intros.
+  intro.
+  assert (exists x, P x). eauto.
+  contradiction.
+Qed.
+
+Theorem Rice : forall A,
+  recursiveSet A -> indexSet A -> (exists x, A x) -> (exists x, ~ A x) -> False.
+Proof.
+  intros.
+  destruct H1 as [a].
+  destruct H2 as [b].
+  inversion H.
+  unfold indexSet in H0.
+  inversion H3.
+  inversion H5.
+  pose (c := fun x => match (f x) with | 0 => b | _ => a end).
+  assert (Recursive c).
+  {
+    pose (C := \ ^ISZERO @ (^l @ '0) @ ^[b] @ ^[a]).
+    apply (Recursive_intro _ C).
+    apply Rec_intro.
+    intros.
+    unfold C.
+    Opaque ISZERO.
+    betae.
+    unfold c.
+    rewrite H6.
+    destruct (f x) eqn:E.
+    - rewrite ISZERO_0_E_TRUE.
+      betaes.
+    - rewrite ISZERO_Sn_E_FALSE.
+      betaes.
+  }
+  apply Kleene_Recursion_ext in H7.
+  destruct H7 as [n].
+  unfold c in H7.
+  destruct (f n) eqn:E.
+  - assert (A b).
+    {
+      apply (H0 _ _ H7).
+      rewrite <- H4.
+      auto.
+    }
+    contradiction.
+  - assert (f n = 0).
+    {
+      rewrite H4.
+      symmetry in H7.
+      apply (H0 _ _ H7).
+      auto.
+    }
+    rewrite E in H8.
+    discriminate.
+Qed.
+
+Theorem Rice_0 : forall A,
+  recursiveSet A -> indexSet A -> (forall x, A x) \/ (forall x, ~ A x).
+Proof.
+  intros.
+  apply NNPP.
+  intro.
+  apply not_or_and in H1.
+  destruct H1.
+  apply (Rice A).
+  auto.
+  auto.
+  apply N_FA_NP_I_EX_P.
+  auto.
+  apply N_FA_NP_I_EX_P.
+  contradict H1.
+  intros.
+  apply NNPP.
+  auto.
+Qed.
+  
+  
+
 
 Fixpoint initial (n0 : nat) (f : nat -> nat) : Lambda :=
   match n0 with
