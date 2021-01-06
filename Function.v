@@ -347,9 +347,6 @@ Proof.
   apply NNPP.
   auto.
 Qed.
-  
-  
-
 
 Fixpoint initial (n0 : nat) (f : nat -> nat) : Lambda :=
   match n0 with

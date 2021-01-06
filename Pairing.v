@@ -1,6 +1,7 @@
 Require Export Utf8.
 Require Export Arith.
 Require Export Lia.
+Require Import Recdef.
 
 Fixpoint Sum (n0 : nat) :=
   match n0 with
@@ -140,7 +141,7 @@ Proof.
   lia.
 Qed.
 
-Theorem pairing_fst : forall n m, fst (cpair n m) = n.
+Theorem pairing_fst : forall n m, fst (n; m) = n.
 Proof.
   unfold fst.
   intros.
@@ -149,7 +150,7 @@ Proof.
   lia.
 Qed.
 
-Theorem pairing_snd : forall n m, snd (cpair n m) = m.
+Theorem pairing_snd : forall n m, snd (n; m) = m.
 Proof.
   intros.
   unfold snd.
@@ -178,3 +179,59 @@ Proof.
   apply pairing_snd.
 Qed.
 
+Theorem n_E_cpair_fst_snd : forall n,
+  n = (fst n; snd n).
+Proof.
+  intros.
+  unfold cpair, snd, fst.
+  assert (H := le_sum_summax_A_lt_sum_s_summax n).
+  destruct H.
+  simpl in H0.
+  assert (n - Sum (summax n) + (summax n - (n - Sum (summax n))) = summax n). lia.
+  rewrite H1.
+  lia.
+Qed.
+
+Lemma fst_descending : forall n,
+  fst n < S n.
+Proof.
+  unfold fst.
+  intros.
+  lia.
+Qed.
+
+Lemma snd_descending : forall n,
+  snd n < S n.
+Proof.
+  intros.
+  rewrite (n_E_cpair_fst_snd n) at 2.
+  assert (H := le_cpair_snd (fst n) (snd n)).
+  lia.
+Qed.
+
+Definition cnil := 0.
+Definition ccons (n m : nat) := S (n; m).
+
+Notation "[ ]" := cnil (format "[ ]").
+Notation "[ x ]" := (ccons x nil).
+Notation "[ x ; y ; .. ; z ]" := (ccons x (ccons y .. (ccons z cnil) ..)).
+
+Compute [0;1;0;0].
+
+Fixpoint nth (n0 m0 : nat) : nat :=
+  match n0, m0 with
+  | 0, S m   => S (fst m)
+  | S n, S m => nth n (snd m)
+  | _, 0     => 0 
+  end.
+
+Function lh (n0 : nat) {wf lt n0}: nat :=
+  match n0 with
+  | 0 => 1
+  | S n => S (lh (snd n))
+  end.
+Proof.
+  intros.
+  apply snd_descending.
+  exact lt_wf.
+Qed.
