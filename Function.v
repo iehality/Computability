@@ -13,19 +13,19 @@ Inductive numeral :=
 | undefined.
 
 Inductive defined (n : numeral) : Prop :=
-| defined_intro : forall x, n = num x -> defined n.
+  defined_intro : forall x, n = num x -> defined n.
 
-Inductive Rec (f : nat -> nat) (l : Lambda) : Prop :=
-| Rec_intro : (forall x, (l @ [x] == [f x])) -> Rec f l.
+Inductive rec (f : nat -> nat) (l : Lambda) : Prop :=
+  rec_intro : (forall x, (l @ [x] == [f x])) -> rec f l.
 
-Inductive Recursive (f : nat -> nat) : Prop :=
-| Recursive_intro : forall l, Rec f l -> Recursive f.
+Inductive recursive (f : nat -> nat) : Prop :=
+  recursive_intro : forall l, rec f l -> recursive f.
 
-Inductive PR (f : nat -> numeral) (l : Lambda) : Prop :=
-| PR_intro : (forall x y, f x = num y <-> (l @ [x] == [y])) -> PR f l.
+Inductive pr (f : nat -> numeral) (l : Lambda) : Prop :=
+  pr_intro : (forall x y, f x = num y <-> (l @ [x] == [y])) -> pr f l.
 
-Inductive PartialRecursive (f : nat -> numeral) :=
-| PartialRecursive_intro : forall l, PR f l -> PartialRecursive f.
+Inductive precursive (f : nat -> numeral) :=
+  precursive_intro : forall l, pr f l -> precursive f.
 
 Parameter code : Lambda -> nat.
 Parameter decode : nat -> Lambda.
@@ -34,7 +34,7 @@ Axiom decode_code : forall l, decode (code l) = l.
 
 Parameter univ : nat -> numeral.
 Parameter UNIV : Lambda.
-Axiom PR_univ : PR univ UNIV.
+Axiom pr_univ : pr univ UNIV.
 Axiom univ_IFF_lambda : forall l x y, univ (code l; x) = num y <-> l @ [x] == [y].
 
 Parameter FST : Lambda.
@@ -46,31 +46,31 @@ Axiom CPAIR_cpair : forall x y, CPAIR @ [x] @ [y] == [(x; y)].
 Notation "$( X ; Y )" := (CPAIR @ X @ Y) (at level 0).
 Notation "^$( X ; Y )" := (^CPAIR @ X @ Y) (at level 0).
 
-Notation "{* e }" := (fun x => univ (e; x)) (at level 0).
-Notation "{* e } ( x )" := (univ (e; x)) (at level 0).
+Notation "#{ e }" := (fun x => univ (e; x)) (at level 0).
+Notation "#{ e } ( x )" := (univ (e; x)) (at level 0).
 
 Lemma pr_univ_cpair_code : forall l,
-  PR {*code l} l.
+  pr #{code l} l.
 Proof.
   intros.
-  apply PR_intro.
+  apply pr_intro.
   intros.
   apply univ_IFF_lambda.
 Qed.
 
 Lemma UNIV_univ : forall e x y,
-  {*e}(x) = num y <-> UNIV @ $([e]; [x]) == [y].
+  #{e}(x) = num y <-> UNIV @ $([e]; [x]) == [y].
 Proof.
   intros.
-  assert (H := PR_univ).
+  assert (H := pr_univ).
   inversion H.
   specialize (H0 (e; x) y).
   rewrite CPAIR_cpair.
   auto.
 Qed.
   
-Lemma N_lambda_IFF_univ_u : forall l x,
-  {*code l}(x) = undefined <-> (forall y, ~ l @ [x] == [y]).
+Lemma univ_u_IFF_N_lambda : forall l x,
+  #{code l}(x) = undefined <-> (forall y, ~ l @ [x] == [y]).
 Proof.
   intros.
   destruct (univ (code l; x)) eqn:E.
@@ -97,7 +97,7 @@ Parameter S_1_1 : Lambda.
 Axiom S11_s11 : forall x y, S_1_1 @ [x] @ [y] == [s_1_1 (x; y)].
 
 Theorem smn : forall e x y,
-  {*s_1_1 (e; x)}(y) = {*e}((x; y)).
+  #{s_1_1 (e; x)}(y) = #{e}((x; y)).
 Proof.
   intros.
   unfold s_1_1.
@@ -110,7 +110,7 @@ Proof.
     rewrite <- univ_IFF_lambda.
     rewrite code_decode.
     auto.
-  - rewrite N_lambda_IFF_univ_u.
+  - rewrite univ_u_IFF_N_lambda.
     intros. intro.
     assert ((\ sf 0 1 (decode e) @ (sf 0 1 CPAIR @ sf 0 1 [x] @ ' 0)) @ [y] == decode e @ [(x; y)]).
     {
@@ -125,19 +125,19 @@ Proof.
     discriminate.
 Qed.
 
-Section RecursionTheorem.
+Section recursionTheorem.
 
   Definition fixedpoint I :=
     s_1_1 (code (\ ^UNIV @ (^CPAIR @ (^UNIV @ (^CPAIR @ (^FST @ '0) @ (^FST @ '0))) @ (^SND @ '0)));
     code (\ ^I @ (^S_1_1 @ ^[code (\ ^UNIV @ (^CPAIR @ (^UNIV @ (^CPAIR @ (^FST @ '0) @ (^FST @ '0))) @ (^SND @ '0)))] @ '0))).
     
-  Theorem Kleene_Recursion : forall i I, Rec i I ->
-    {*fixedpoint I} = {*i (fixedpoint I)}.
+  Theorem Kleene_recursion : forall i I, rec i I ->
+    #{fixedpoint I} = #{i (fixedpoint I)}.
   Proof.
     intros.
     inversion H.
     pose (d := code (\ ^UNIV @ (^CPAIR @ (^UNIV @ (^CPAIR @ (^FST @ '0) @ (^FST @ '0))) @ (^SND @ '0)))).
-    assert (∀ e y, {*e}(e) = num y -> {*s_1_1 (d; e)} = {*y}).
+    assert (∀ e y, #{e}(e) = num y -> #{s_1_1 (d; e)} = #{y}).
     {
       intros.
       apply functional_extensionality. intros.
@@ -152,7 +152,7 @@ Section RecursionTheorem.
         rewrite H1.
         rewrite UNIV_univ in E.
         auto.
-      - rewrite N_lambda_IFF_univ_u.
+      - rewrite univ_u_IFF_N_lambda.
         intros. intro.
         assert (univ (y; x) = num y0).
         rewrite UNIV_univ.
@@ -179,33 +179,33 @@ Section RecursionTheorem.
     auto.
   Qed.
 
-  Theorem Kleene_Recursion_ext : forall i, Recursive i ->
-    exists n : nat, {*n} = {*i n}.
+  Theorem Kleene_recursion_ext : forall i, recursive i ->
+    exists n : nat, #{n} = #{i n}.
   Proof.
     intros.
     inversion H.
-    apply Kleene_Recursion in H0.
+    apply Kleene_recursion in H0.
     eauto.
   Qed.
     
-End RecursionTheorem.
+End recursionTheorem.
 
-Definition Domain (e x : nat) : Prop := defined ({*e}(x)).
+Definition Domain (e x : nat) : Prop := defined (#{e}(x)).
 
 Inductive reSet (A : nat -> Prop) : Prop :=
-| reSet_intro : forall f, PartialRecursive f -> (forall x, defined (f x) <-> A x) -> reSet A.
+  reSet_intro : forall f, precursive f -> (forall x, defined (f x) <-> A x) -> reSet A.
 
 Inductive recursiveSet (A : nat -> Prop) : Prop :=
-| recursiveSet_intro : forall f, Recursive f -> (forall x, f x = 0 <-> A x) -> recursiveSet A.
+  recursiveSet_intro : forall f, recursive f -> (forall x, f x = 0 <-> A x) -> recursiveSet A.
 
-Definition K := fun x => defined ({*x}(x)).
+Definition K := fun x => defined (#{x}(x)).
 
 Theorem K_re : reSet K.
 Proof.
-  apply (reSet_intro _ (fun x => {*x}(x))).
+  apply (reSet_intro _ (fun x => #{x}(x))).
   - pose (l := \ ^UNIV @ (^CPAIR @ '0 @ '0)).
-    apply (PartialRecursive_intro _ l).
-    apply PR_intro.
+    apply (precursive_intro _ l).
+    apply pr_intro.
     intros.
     assert (l @ [x] == UNIV @ (CPAIR @ [x] @ [x])).
     unfold l.
@@ -264,7 +264,7 @@ Proof.
     Transparent DIVERGENT.
 Qed.
 
-Definition indexSet (A : nat -> Prop) := forall x y, {*x} = {*y} -> A x -> A y.
+Definition indexSet (A : nat -> Prop) := forall x y, #{x} = #{y} -> A x -> A y.
 
 Lemma N_FA_NP_I_EX_P {A : Type} (P : A -> Prop) :
   (~ forall x, ~ P x) -> (exists x, P x).
@@ -289,11 +289,11 @@ Proof.
   inversion H3.
   inversion H5.
   pose (c := fun x => match (f x) with | 0 => b | _ => a end).
-  assert (Recursive c).
+  assert (recursive c).
   {
     pose (C := \ ^ISZERO @ (^l @ '0) @ ^[b] @ ^[a]).
-    apply (Recursive_intro _ C).
-    apply Rec_intro.
+    apply (recursive_intro _ C).
+    apply rec_intro.
     intros.
     unfold C.
     Opaque ISZERO.
@@ -306,7 +306,7 @@ Proof.
     - rewrite ISZERO_Sn_E_FALSE.
       betaes.
   }
-  apply Kleene_Recursion_ext in H7.
+  apply Kleene_recursion_ext in H7.
   destruct H7 as [n].
   unfold c in H7.
   destruct (f n) eqn:E.
@@ -346,37 +346,4 @@ Proof.
   intros.
   apply NNPP.
   auto.
-Qed.
-
-Fixpoint initial (n0 : nat) (f : nat -> nat) : Lambda :=
-  match n0 with
-  | 0   => \ ^DIVERGENT
-  | S n => \ (^LE @ '0 @ ^[n]) @ ((^LE @ ^[n] @ '0) @ ^[f n] @ (^(initial n f) @ '0)) @ ^DIVERGENT
-  end.
-
-Lemma initial_eq : forall f n x, x < n -> (initial n f) @ [x] == [f x].
-Proof.
-  induction n.
-  - intros.
-    lia.
-  - intros.
-    Opaque LE.
-    Opaque DIVERGENT.
-    Opaque NAT.
-    simpl.
-    betae.
-    unfold lt in H.
-    apply le_S_n in H.
-    destruct (le_lt_eq_dec x n H).
-    + rewrite IHn.
-      rewrite le_I_LE_E_TRUE.
-      rewrite Nle_I_LE_E_FALSE.
-      unfold TRUE, FALSE. betaes.
-      lia. lia. lia.
-    + rewrite le_I_LE_E_TRUE.
-      rewrite le_I_LE_E_TRUE.
-      rewrite e.
-      unfold TRUE.
-      betaes.
-      lia. lia.
 Qed.

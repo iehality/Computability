@@ -1,7 +1,7 @@
 Require Export Utf8.
 Require Export Arith.
 Require Export Lia.
-Require Import Recdef.
+Require Export Recdef.
 
 Fixpoint Sum (n0 : nat) :=
   match n0 with
@@ -212,11 +212,9 @@ Qed.
 Definition cnil := 0.
 Definition ccons (n m : nat) := S (n; m).
 
-Notation "[ ]" := cnil (format "[ ]").
-Notation "[ x ]" := (ccons x nil).
-Notation "[ x ; y ; .. ; z ]" := (ccons x (ccons y .. (ccons z cnil) ..)).
+Notation "`( x ; y ; .. ; z )" := (ccons x (ccons y .. (ccons z cnil) ..)).
 
-Compute [0;1;0;0].
+Compute `(0;1;0;0).
 
 Fixpoint nth (n0 m0 : nat) : nat :=
   match n0, m0 with

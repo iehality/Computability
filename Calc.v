@@ -360,7 +360,7 @@ Proof.
   reflexivity.
 Qed.
 
-Definition MU := \ (YC @ (\ \ ('2 @ '0) @ '0 @ ('1 @ (SUCC @ '0)))) @ [0].
+Definition MU := \ (^YC @ (\ \ ('2 @ '0) @ '0 @ ('1 @ (^^^SUCC @ '0)))) @ ^[0].
 
 Lemma inductioninv : forall x p, 
   p x -> 
@@ -383,12 +383,10 @@ Lemma MU_R_minimum : forall n A,
   (forall m, m < n -> (A @ [m] -->> FALSE)) ->
   (MU @ A -->> [n]).
 Proof.
-  assert(fv YC = 0). simpl. auto.
-  assert(fv SUCC = 0). simpl. auto.
   Opaque YC.
   Opaque SUCC.
   Opaque NAT.
-  pose(Y A := YC @ (\ \ sf 0 2 A @ ' 0 @ ' 0 @ (' 1 @ (SUCC @ ' 0)))).
+  pose(Y A := YC @ (\ \ ^^A @ ' 0 @ ' 0 @ (' 1 @ (^^SUCC @ ' 0)))).
   pose (P A n m := (Y A @ [m] -->> [n])).
   assert(forall A n, 
     (A @ [n] -->> TRUE) -> 
@@ -427,7 +425,7 @@ Proof.
     unfold MU.
     beta.
     fold (Y A).
-    apply H1.
+    apply H.
     auto.
     auto.
 Qed.
